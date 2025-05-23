@@ -54,12 +54,35 @@ def convert_docx_to_xlsx_improved(docx_file_path, xlsx_file_path):
                     
                     data_dict[clean_key] = value
     
-    # Convert dictionary to DataFrame (transpose to make keys as columns)
+    #splitting date to seperate day, month and year
+    from datetime import datetime
+
+    # Try to extract and parse the Issue Opening Date
+    issue_date_raw = data_dict.get("Issue Opening Date")
+    if issue_date_raw:
+        try:
+            # Convert formats like 'April 9, 2025' to datetime object
+            parsed_date = datetime.strptime(issue_date_raw, "%B %d, %Y")            
+            data_dict['date_ddmmyyyy'] = parsed_date.strftime("%d%m%Y")
+            #converting to individual d d m m y y y y cells
+            data_dict['d1'] = data_dict['date_ddmmyyyy'][0]
+            data_dict['d2'] = data_dict['date_ddmmyyyy'][1]
+            data_dict['m1'] = data_dict['date_ddmmyyyy'][2]
+            data_dict['m2'] = data_dict['date_ddmmyyyy'][3]
+            data_dict['y1'] = data_dict['date_ddmmyyyy'][4]
+            data_dict['y2'] = data_dict['date_ddmmyyyy'][5]
+            data_dict['y3'] = data_dict['date_ddmmyyyy'][6]
+            data_dict['y4'] = data_dict['date_ddmmyyyy'][7]
+        
+        
+        except ValueError as e:
+            print(f"⚠️ Could not parse Issue Opening Date: {issue_date_raw}")
+
+    # Create DataFrame
     if data_dict:
         df = pd.DataFrame([data_dict])
     else:
         df = pd.DataFrame()
-    
     # Write to Excel with formatting
     with pd.ExcelWriter(xlsx_file_path, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name="Terms", index=False)
@@ -183,15 +206,18 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
     if issue_date_raw:
         try:
             # Convert formats like 'April 9, 2025' to datetime object
-            parsed_date = datetime.strptime(issue_date_raw, "%B %d, %Y")
-            
-            # Add individual components
-            data_dict['date_day'] = f"{parsed_date.day:02d}"
-            data_dict['date_month'] = f"{parsed_date.month:02d}"
-            data_dict['date_year'] = f"{parsed_date.year:04d}"
-            
-            # Optional: Also add full compact version if needed (for checking)
+            parsed_date = datetime.strptime(issue_date_raw, "%B %d, %Y")            
             data_dict['date_ddmmyyyy'] = parsed_date.strftime("%d%m%Y")
+            #converting to individual d d m m y y y y cells
+            data_dict['d1'] = data_dict['date_ddmmyyyy'][0]
+            data_dict['d2'] = data_dict['date_ddmmyyyy'][1]
+            data_dict['m1'] = data_dict['date_ddmmyyyy'][2]
+            data_dict['m2'] = data_dict['date_ddmmyyyy'][3]
+            data_dict['y1'] = data_dict['date_ddmmyyyy'][4]
+            data_dict['y2'] = data_dict['date_ddmmyyyy'][5]
+            data_dict['y3'] = data_dict['date_ddmmyyyy'][6]
+            data_dict['y4'] = data_dict['date_ddmmyyyy'][7]
+        
         
         except ValueError as e:
             print(f"⚠️ Could not parse Issue Opening Date: {issue_date_raw}")
