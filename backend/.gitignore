@@ -12,3 +12,6 @@ uploads/
 *.pyd
 .idea/
 .vscode/
+
+#tmp dir
+tmp/
