@@ -175,6 +175,27 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
                             'Value': value[:50] + '...' if len(value) > 50 else value
                         })
     
+    #splitting date to seperate day, month and year
+    from datetime import datetime
+
+    # Try to extract and parse the Issue Opening Date
+    issue_date_raw = data_dict.get("Issue Opening Date")
+    if issue_date_raw:
+        try:
+            # Convert formats like 'April 9, 2025' to datetime object
+            parsed_date = datetime.strptime(issue_date_raw, "%B %d, %Y")
+            
+            # Add individual components
+            data_dict['date_day'] = f"{parsed_date.day:02d}"
+            data_dict['date_month'] = f"{parsed_date.month:02d}"
+            data_dict['date_year'] = f"{parsed_date.year:04d}"
+            
+            # Optional: Also add full compact version if needed (for checking)
+            data_dict['date_ddmmyyyy'] = parsed_date.strftime("%d%m%Y")
+        
+        except ValueError as e:
+            print(f"⚠️ Could not parse Issue Opening Date: {issue_date_raw}")
+
     # Create DataFrame
     if data_dict:
         df = pd.DataFrame([data_dict])
