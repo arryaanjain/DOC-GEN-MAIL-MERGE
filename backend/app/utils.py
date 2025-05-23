@@ -179,52 +179,87 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
             
             # Strategy 1: Find key-value pairs in adjacent columns
             if num_cols >= 2:
-                # Look for patterns where column i has key and column i+1 has value
                 for i in range(num_cols - 1):
                     if cells[i].strip() and cells[i+1].strip():
-                        # Skip if it looks like a continuation of previous content
-                        if not any(skip_word in cells[i].lower() for skip_word in ['terms', 'issue', '>', '*']):
+                        # Only skip exact matches of these phrases
+                        skip_phrases = [
+                            'terms of issue',
+                            'terms and conditions',
+                            '>>',
+                            '***',
+                            '*****'
+                        ]
+                        # Don't skip if it's a valid header
+                        valid_headers = [
+                            'issue price',
+                            'issue opening date',
+                            'issue closing date',
+                            'discount at which security is issued'
+                        ]
+                        cell_lower = cells[i].lower()
+                        
+                        if (not any(phrase in cell_lower for phrase in skip_phrases) or 
+                            any(header in cell_lower for header in valid_headers)):
                             key = cells[i].strip()
                             value = cells[i+1].strip()
                             extraction_method = f"Col{i+1}→Col{i+2}"
                             break
             
-            # Strategy 2: Handle single column with meaningful content
+           # Strategy 2: Handle single column with meaningful content
             if not key and num_cols >= 1:
+                skip_phrases = [
+                    'terms of issue',
+                    'terms and conditions',
+                    '***',
+                    '>>>'
+                ]
+                valid_headers = [
+                    'issue price',
+                    'issue opening date',
+                    'issue closing date',
+                    'discount at which security is issued'
+                ]
+                
                 for i, cell in enumerate(cells):
-                    if cell.strip() and not any(skip_word in cell.lower() for skip_word in ['terms', 'issue', '>', '*']):
-                        # Check if this looks like a standalone value
+                    cell_lower = cell.strip().lower()
+                    if (cell.strip() and 
+                        not any(skip in cell_lower for skip in skip_phrases) or
+                        any(header in cell_lower for header in valid_headers)):
                         if len(cell.strip()) > 3:  # Avoid very short strings
-                            key = f"Field_{table_idx + 1}_{row_idx + 1}_{i + 1}"
+                            key = cell.strip()  # Use actual content instead of Field_X_Y_Z
                             value = cell.strip()
                             extraction_method = f"Single_Col{i+1}"
                             break
             
             # Strategy 3: Handle multi-column data (3+ columns)
             if not key and num_cols >= 3:
-                # Look for key in first non-empty column, value in subsequent columns
                 first_col_idx = None
                 for i, cell in enumerate(cells):
-                    if cell.strip():
+                    cell_lower = cell.strip().lower()
+                    # Check if it's a valid header before skipping
+                    if (cell.strip() and 
+                        (not any(skip in cell_lower for skip in skip_phrases) or
+                        any(header in cell_lower for header in valid_headers))):
                         first_col_idx = i
                         break
                 
                 if first_col_idx is not None and first_col_idx < num_cols - 1:
                     key = cells[first_col_idx].strip()
-                    # Combine remaining non-empty columns as value
                     remaining_values = [cells[j].strip() for j in range(first_col_idx + 1, num_cols) if cells[j].strip()]
                     if remaining_values:
-                        value = " | ".join(remaining_values)  # Use separator for multiple values
+                        value = " | ".join(remaining_values)
                         extraction_method = f"Multi_Col{first_col_idx+1}→{num_cols}"
-            
+
             # Clean and validate the extracted key
             if key:
                 # Remove problematic characters and normalize
-                key = re.sub(r'[>\*\[\]{}]', '', key)  # Remove markup characters
+                key = re.sub(r'[>\*\[\]{}]', '', key)
                 key = re.sub(r'\s+', ' ', key).strip()
                 
-                # Skip if key is too short or contains only common words
-                if len(key) < 2 or key.lower() in ['', 'na', 'not applicable', 'terms', 'issue']:
+                # Only skip if it's not a valid header
+                if (len(key) < 2 or 
+                    (key.lower() in ['', 'na', 'not applicable', 'terms'] and 
+                    not any(header in key.lower() for header in valid_headers))):
                     key = ""
             
             # Store the data if we found a valid key-value pair
