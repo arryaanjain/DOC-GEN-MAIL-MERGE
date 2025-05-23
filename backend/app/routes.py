@@ -1,4 +1,4 @@
-from flask import Blueprint, request, send_file
+from flask import Blueprint, request, send_file, after_this_request
 from werkzeug.utils import secure_filename
 import os
 import shutil
@@ -28,10 +28,24 @@ def upload_file():
 
         try:
             convert_docx_to_xlsx(docx_path, xlsx_path)
-            response = send_file(xlsx_path, as_attachment=True)
-        finally:
-            # Cleanup: Remove the tmp directory and its contents
-            shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        return response
+            # Debug: Confirm cleanup registration
+            print(f"🧹 Registering cleanup for directory: {tmp_dir}")
+
+            # Schedule cleanup after the response is sent
+            @after_this_request
+            def cleanup(response):
+                print(f"🧹 Cleaning up directory: {tmp_dir}")
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+                return response
+
+            # Debug: Confirm file is being sent
+            print(f"📤 Sending file: {xlsx_path}")
+            return send_file(xlsx_path, as_attachment=True, max_age=0)
+        except Exception as e:
+            # Cleanup in case of an error
+            print(f"⚠️ Exception occurred: {e}")
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            return {'error': str(e)}, 500
+
     return {'error': 'Invalid file type. Only DOCX files are accepted.'}, 400

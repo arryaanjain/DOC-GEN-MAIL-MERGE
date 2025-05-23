@@ -98,7 +98,7 @@ def convert_docx_to_xlsx_improved(docx_file_path, xlsx_file_path):
         worksheet.set_row(0, 30)  # Header row
         for row_num in range(1, len(df) + 1):
             worksheet.set_row(row_num, 20)
-
+    writer.close()
     print(f"✅ Export complete!")
     print(f"📊 Total fields extracted: {len(data_dict)}")
     print(f"📄 Saved to: {xlsx_file_path}")
@@ -231,7 +231,7 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
                 len(str(value))
             )
             worksheet.set_column(col_num, col_num, min(max_length + 2, 50))
-
+    writer.close()
     print(f"✅ Export complete!")
     print(f"📊 Total fields extracted: {len(data_dict)}")
     if debug:
