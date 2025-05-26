@@ -2,7 +2,9 @@ from flask import Blueprint, request, send_file, after_this_request
 from werkzeug.utils import secure_filename
 import os
 import shutil
-from .utils import convert_docx_to_xlsx
+from app.core.document_processor import DocumentProcessor
+
+ob = DocumentProcessor(debug=True)
 
 routes = Blueprint('routes', __name__)
 
@@ -31,7 +33,7 @@ def upload_file():
         xlsx_path = os.path.join(tmp_dir, xlsx_filename)
 
         try:
-            convert_docx_to_xlsx(docx_path, xlsx_path,  processing_date=processing_date)
+            ob.convert_docx_to_xlsx(docx_path, xlsx_path,  processing_date=processing_date)
 
             # Debug: Confirm cleanup registration
             print(f"🧹 Registering cleanup for directory: {tmp_dir}")
