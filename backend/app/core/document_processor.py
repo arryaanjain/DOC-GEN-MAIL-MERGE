@@ -57,7 +57,7 @@ class DocumentProcessor:
                 # Strategy 1: Find key-value pairs in adjacent columns
                 if num_cols >= 2:
                     for i in range(num_cols - 1):
-                        if cells[i].strip() and cells[i+1].strip():
+                        if cells[i].strip():
                             # Only skip exact matches of these phrases
                             skip_phrases = [
                                 'terms of issue',
@@ -71,43 +71,102 @@ class DocumentProcessor:
                                 'issue price',
                                 'issue opening date',
                                 'issue closing date',
-                                'discount at which security is issued'
+                                'discount at which security is issued',
+                                'coupon'
                             ]
                             cell_lower = cells[i].lower()
                             
                             if (not any(phrase in cell_lower for phrase in skip_phrases) or 
                                 any(header in cell_lower for header in valid_headers)):
                                 key = cells[i].strip()
-                                value = cells[i+1].strip()
+                                
+                                # Combine values from column 2 and 3 if they're different
+                                if num_cols > 2 and cells[1].strip() and cells[2].strip():
+                                    if cells[1].strip() != cells[2].strip():
+                                        value = f"{cells[1].strip()} | {cells[2].strip()}"
+                                    else:
+                                        value = cells[1].strip()
+                                else:
+                                    value = cells[i+1].strip()
+                                    
                                 extraction_method = f"Col{i+1}→Col{i+2}"
+
+                                 # Add to data_dict right after extraction
+                                if key and key.strip():
+                                    clean_key = key.strip()
+                                    clean_value = value.strip() if value else "Present"
+                                    
+                                    # Handle duplicate keys
+                                    original_key = clean_key
+                                    counter = 1
+                                    while clean_key in data_dict:
+                                        clean_key = f"{original_key}_{counter}"
+                                        counter += 1
+                                    
+                                    data_dict[clean_key] = clean_value
+                                    if debug:
+                                        print(f"    ✓ Strategy 1: Added {clean_key} = {clean_value[:50]}...")
+                                        debug_info.append({
+                                            'Table': table_idx + 1,
+                                            'Row': row_idx + 1,
+                                            'Method': extraction_method,
+                                            'Key': clean_key,
+                                            'Value': clean_value[:100] + '...' if len(clean_value) > 100 else clean_value,
+                                            'Original_Cells': ' | '.join([f"Col{i+1}: {cell}" for i, cell in enumerate(cells) if cell.strip()])
+                                        })
                                 break
-                
-            # Strategy 2: Handle single column with meaningful content
-                if not key and num_cols >= 1:
-                    skip_phrases = [
-                        'terms of issue',
-                        'terms and conditions',
-                        '***',
-                        '>>>'
-                    ]
-                    valid_headers = [
-                        'issue price',
-                        'issue opening date',
-                        'issue closing date',
-                        'discount at which security is issued'
-                    ]
                     
-                    for i, cell in enumerate(cells):
-                        cell_lower = cell.strip().lower()
-                        if (cell.strip() and 
-                            not any(skip in cell_lower for skip in skip_phrases) or
-                            any(header in cell_lower for header in valid_headers)):
-                            if len(cell.strip()) > 3:  # Avoid very short strings
-                                key = cell.strip()  # Use actual content instead of Field_X_Y_Z
-                                value = cell.strip()
-                                extraction_method = f"Single_Col{i+1}"
-                                break
-                
+                # Strategy 2: Handle single column with meaningful content
+                    if not key and num_cols >= 1:
+                        skip_phrases = [
+                            'terms of issue',
+                            'terms and conditions',
+                            '***',
+                            '>>>'
+                        ]
+                        valid_headers = [
+                            'issue price',
+                            'issue opening date',
+                            'issue closing date',
+                            'discount at which security is issued'
+                        ]
+                        
+                        for i, cell in enumerate(cells):
+                            cell_lower = cell.strip().lower()
+                            if (cell.strip() and 
+                                not any(skip in cell_lower for skip in skip_phrases) or
+                                any(header in cell_lower for header in valid_headers)):
+                                if len(cell.strip()) > 3:  # Avoid very short strings
+                                    key = cell.strip()  # Use actual content instead of Field_X_Y_Z
+                                    value = cell.strip()
+                                    extraction_method = f"Single_Col{i+1}"
+
+                                    # Add to data_dict right after extraction
+                                    if key and key.strip():
+                                        clean_key = key.strip()
+                                        clean_value = value.strip() if value else "Present"
+                                        
+                                        # Handle duplicate keys
+                                        original_key = clean_key
+                                        counter = 1
+                                        while clean_key in data_dict:
+                                            clean_key = f"{original_key}_{counter}"
+                                            counter += 1
+                                        
+                                        data_dict[clean_key] = clean_value
+                                        if debug:
+                                            # Add debug info
+                                            debug_info.append({
+                                                'Table': table_idx + 1,
+                                                'Row': row_idx + 1,
+                                                'Method': extraction_method,
+                                                'Key': clean_key,
+                                                'Value': clean_value[:100] + '...' if len(clean_value) > 100 else clean_value,
+                                                'Original_Cells': ' | '.join([f"Col{i+1}: {cell}" for i, cell in enumerate(cells) if cell.strip()])
+                                            })
+                                            print(f"    ✓ Strategy 2: Added {clean_key} = {clean_value[:50]}...")
+                                    break
+
                 # Strategy 3: Handle multi-column data (3+ columns)
                 if not key and num_cols >= 3:
                     if debug:
@@ -115,76 +174,87 @@ class DocumentProcessor:
                         print(f"    Number of columns: {num_cols}")
                         print(f"    Cells content: {cells}")
 
-                    # Ensure we have cells to work with
-                    if cells and len(cells) > 0:
-                        # Check if this is a Coupon row
-                        first_cell = cells[0].strip().lower() if cells[0] else ""
-                        print(f"    First cell content: '{first_cell}'")
-                        
-                        if first_cell == 'coupon':
+                    # Check if this is a Coupon row
+                    first_cell = cells[0].strip().lower() if cells[0] else ""
+                    
+                    if first_cell == 'coupon':
+                        if debug:
                             print("    ✓ Found Coupon row!")
+                        
+                        # Initialize coupon data structure if not exists
+                        if 'coupon_data' not in data_dict:
+                            data_dict['coupon_data'] = []
+                        
+                        # Get description and value from columns 2 and 3
+                        description = cells[1].strip() if len(cells) > 1 else ""
+                        value = cells[2].strip() if len(cells) > 2 else ""
+                        
+                        if description or value:
+                            # Store complete information
+                            combined_value = ""
+                            if description and value:
+                                combined_value = f"{description} | {value}"
+                            elif description:
+                                combined_value = description
+                            elif value:
+                                combined_value = value
                             
-                            # First pass: Store Coupon → Condition (Col1 → Col2)
-                            coupon_key = 'Coupon' if 'Coupon' not in data_dict else 'Coupon_1'
-                            condition_text = cells[1].strip() if len(cells) > 1 else ""
-                            data_dict[coupon_key] = condition_text
-                            
-                            if debug:
-                                print(f"    ✓ First pass - {coupon_key}: {condition_text[:50]}...")
-                            
-                            # Second pass: Store Condition → Formula (Col2 → Col3)
-                            formula_key = condition_text  # Use the condition as the key
-                            formula_value = cells[2].strip() if len(cells) > 2 else ""
-                            
-                            # Store formula with condition as key
-                            if formula_key and formula_value:
-                                data_dict[formula_key] = formula_value
+                            if combined_value:
+                                data_dict['coupon_data'].append(combined_value)
+                                
+                                # Determine if this is first or second coupon entry
+                                coupon_key = 'Coupon' if 'Coupon' not in data_dict else 'Coupon_1'
+                                data_dict[coupon_key] = combined_value
+                                
                                 if debug:
-                                    print(f"    ✓ Second pass - Formula stored: {formula_value}")
-                            
-                            # Set method for debug info
-                            extraction_method = "Coupon_Special"
-                            
-                            if debug:
-                                print("    ✓ Coupon row processing complete")
-                            
-                            key = None  # Prevent further processing of this row
-                            continue
-                        else:
-                            if debug:
-                                print("    → Not a Coupon row, continuing normal processing")
+                                    # Add debug info for coupon
+                                    debug_info.append({
+                                        'Table': table_idx + 1,
+                                        'Row': row_idx + 1,
+                                        'Method': 'Strategy3_Coupon',
+                                        'Key': coupon_key,
+                                        'Value': combined_value[:100] + '...' if len(combined_value) > 100 else combined_value,
+                                        'Original_Cells': ' | '.join([f"Col{i+1}: {cell}" for i, cell in enumerate(cells) if cell.strip()])
+                                    })
+                                    print(f"    ✓ Added {coupon_key}: {combined_value[:50]}...")
+                        
+                        # Set method for debug info
+                        extraction_method = "Coupon_Special"
+                        key = None  # Prevent further processing of this row
+                        
+                        continue
                                             
-                # Store the data if we found a valid key-value pair
-                if key and key.strip():
-                    clean_key = key.strip()
-                    clean_value = value.strip() if value else "Present"
-                    
-                    # Handle duplicate keys
-                    original_key = clean_key
-                    counter = 1
-                    while clean_key in data_dict:
-                        clean_key = f"{original_key}_{counter}"
-                        counter += 1
-                    
-                    data_dict[clean_key] = clean_value
-                    if processing_date:
-                        date_components = handle_processing_date(processing_date)
-                        if date_components:
-                            data_dict.update(date_components)
-                            if debug:
-                                print(f"📅 Added processing date: {processing_date}")
+                    # Store the data if we found a valid key-value pair
+                    if key and key.strip():
+                        clean_key = key.strip()
+                        clean_value = value.strip() if value else "Present"
+                        
+                        # Handle duplicate keys
+                        original_key = clean_key
+                        counter = 1
+                        while clean_key in data_dict:
+                            clean_key = f"{original_key}_{counter}"
+                            counter += 1
+                        
+                        data_dict[clean_key] = clean_value
+                        if processing_date:
+                            date_components = handle_processing_date(processing_date)
+                            if date_components:
+                                data_dict.update(date_components)
+                                if debug:
+                                    print(f"📅 Added processing date: {processing_date}")
 
-                            
-                    if debug:
-                        debug_info.append({
-                            'Table': table_idx + 1,
-                            'Row': row_idx + 1,
-                            'Method': extraction_method,
-                            'Key': clean_key,
-                            'Value': clean_value[:100] + '...' if len(clean_value) > 100 else clean_value,
-                            'Original_Cells': ' | '.join([f"Col{i+1}: {cell}" for i, cell in enumerate(cells) if cell.strip()])
-                        })
-                        print(f"    ✓ Extracted: {clean_key} = {clean_value[:50]}{'...' if len(clean_value) > 50 else ''}")
+                                
+                        if debug:
+                            debug_info.append({
+                                'Table': table_idx + 1,
+                                'Row': row_idx + 1,
+                                'Method': extraction_method,
+                                'Key': clean_key,
+                                'Value': clean_value[:100] + '...' if len(clean_value) > 100 else clean_value,
+                                'Original_Cells': ' | '.join([f"Col{i+1}: {cell}" for i, cell in enumerate(cells) if cell.strip()])
+                            })
+                            print(f"    ✓ Extracted: {clean_key} = {clean_value[:50]}{'...' if len(clean_value) > 50 else ''}")
 
         # Process special date fields
         date_fields_to_process = [
