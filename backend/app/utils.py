@@ -130,7 +130,7 @@ def convert_docx_to_xlsx_improved(docx_file_path, xlsx_file_path):
 
 # Alternative function for better debugging and validation
 # Enhanced function for better table structure handling
-def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
+def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, processing_date=None, debug=True):
     from docx import Document
     import pandas as pd
     import re
@@ -233,35 +233,50 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
             
             # Strategy 3: Handle multi-column data (3+ columns)
             if not key and num_cols >= 3:
-                first_col_idx = None
-                for i, cell in enumerate(cells):
-                    cell_lower = cell.strip().lower()
-                    # Check if it's a valid header before skipping
-                    if (cell.strip() and 
-                        (not any(skip in cell_lower for skip in skip_phrases) or
-                        any(header in cell_lower for header in valid_headers))):
-                        first_col_idx = i
-                        break
-                
-                if first_col_idx is not None and first_col_idx < num_cols - 1:
-                    key = cells[first_col_idx].strip()
-                    remaining_values = [cells[j].strip() for j in range(first_col_idx + 1, num_cols) if cells[j].strip()]
-                    if remaining_values:
-                        value = " | ".join(remaining_values)
-                        extraction_method = f"Multi_Col{first_col_idx+1}→{num_cols}"
+                if debug:
+                    print("\n→ Entering Strategy 3")
+                    print(f"    Number of columns: {num_cols}")
+                    print(f"    Cells content: {cells}")
 
-            # Clean and validate the extracted key
-            if key:
-                # Remove problematic characters and normalize
-                key = re.sub(r'[>\*\[\]{}]', '', key)
-                key = re.sub(r'\s+', ' ', key).strip()
-                
-                # Only skip if it's not a valid header
-                if (len(key) < 2 or 
-                    (key.lower() in ['', 'na', 'not applicable', 'terms'] and 
-                    not any(header in key.lower() for header in valid_headers))):
-                    key = ""
-            
+                # Ensure we have cells to work with
+                if cells and len(cells) > 0:
+                    # Check if this is a Coupon row
+                    first_cell = cells[0].strip().lower() if cells[0] else ""
+                    print(f"    First cell content: '{first_cell}'")
+                    
+                    if first_cell == 'coupon':
+                        print("    ✓ Found Coupon row!")
+                        
+                        # First pass: Store Coupon → Condition (Col1 → Col2)
+                        coupon_key = 'Coupon' if 'Coupon' not in data_dict else 'Coupon_1'
+                        condition_text = cells[1].strip() if len(cells) > 1 else ""
+                        data_dict[coupon_key] = condition_text
+                        
+                        if debug:
+                            print(f"    ✓ First pass - {coupon_key}: {condition_text[:50]}...")
+                        
+                        # Second pass: Store Condition → Formula (Col2 → Col3)
+                        formula_key = condition_text  # Use the condition as the key
+                        formula_value = cells[2].strip() if len(cells) > 2 else ""
+                        
+                        # Store formula with condition as key
+                        if formula_key and formula_value:
+                            data_dict[formula_key] = formula_value
+                            if debug:
+                                print(f"    ✓ Second pass - Formula stored: {formula_value}")
+                        
+                        # Set method for debug info
+                        extraction_method = "Coupon_Special"
+                        
+                        if debug:
+                            print("    ✓ Coupon row processing complete")
+                        
+                        key = None  # Prevent further processing of this row
+                        continue
+                    else:
+                        if debug:
+                            print("    → Not a Coupon row, continuing normal processing")
+                                        
             # Store the data if we found a valid key-value pair
             if key and key.strip():
                 clean_key = key.strip()
@@ -275,7 +290,14 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
                     counter += 1
                 
                 data_dict[clean_key] = clean_value
-                
+                if processing_date:
+                    date_components = handle_processing_date(processing_date)
+                    if date_components:
+                        data_dict.update(date_components)
+                        if debug:
+                            print(f"📅 Added processing date: {processing_date}")
+
+                        
                 if debug:
                     debug_info.append({
                         'Table': table_idx + 1,
@@ -331,7 +353,53 @@ def convert_docx_to_xlsx(docx_file_path, xlsx_file_path, debug=True):
             except Exception as e:
                 if debug:
                     print(f"⚠️ Could not parse date field {date_field}: {date_value} - {e}")
-
+    # Extract series number from Product Code
+    if 'Product Code' in data_dict:
+        series_number = extract_series_number(data_dict['Product Code'])
+        data_dict['series_number'] = series_number
+        if debug:
+            print(f"📎 Extracted series number: {series_number}")
+    # Extract issue size number from Issue Size
+    if 'Issue Size' in data_dict:
+        issue_size_num, formatted_amount = extract_issue_size_number(data_dict['Issue Size'])
+        data_dict['issue_size_number'] = issue_size_num
+        data_dict['total_amount'] = formatted_amount
+        if debug:
+            print(f"💰 Extracted issue size number: {issue_size_num}")
+            print(f"💰 Extracted total amount: {formatted_amount}")
+    # Extract tenor days number
+    if 'Tenor In Days' in data_dict:
+        tenor_days = extract_tenor_days_number(data_dict['Tenor In Days'])
+        data_dict['tenor_days_num'] = tenor_days
+        if debug:
+            print(f"📅 Extracted tenor days: {tenor_days}")
+    # Extract face value number
+    if 'Face Value' in data_dict:
+        face_value_num, formatted_face_value = extract_face_value_number(data_dict['Face Value'])
+        data_dict['face_value_num'] = face_value_num
+        data_dict['formatted_face_value'] = formatted_face_value
+        if debug:
+            print(f"💵 Extracted face value: {face_value_num} ({formatted_face_value})")
+    #amount raised
+    if 'issue_size_number' in data_dict and 'face_value_num' in data_dict:
+        amount_raised = calculate_amount_raised(data_dict)
+        data_dict['amount_raised'] = amount_raised
+        if debug:
+            print(f"💰 Total Value: {amount_raised}")
+    # Extract discount value number
+    if 'Discount at which security is issued' in data_dict:
+        discount_value_num, formatted_discount_value = extract_discount_value_number(data_dict['Discount at which security is issued'])
+        data_dict['discount_value_num'] = discount_value_num
+        data_dict['formatted_discount_value'] = formatted_discount_value
+        if debug:
+            print(f"💹 Extracted discount value: {discount_value_num}% ({formatted_discount_value})")
+    # Extract issue price number
+    if 'Issue Price' in data_dict:
+        issue_price_num, formatted_issue_price = extract_issue_price_number(data_dict['Issue Price'])
+        data_dict['issue_price_num'] = issue_price_num
+        data_dict['formatted_issue_price'] = formatted_issue_price
+        if debug:
+            print(f"💲 Extracted issue price: {issue_price_num} ({formatted_issue_price})")
     # Create DataFrames
     if data_dict:
         df = pd.DataFrame([data_dict])
@@ -452,6 +520,241 @@ if data:
         print(f"{key}: {value}")
 """
 
+def handle_processing_date(date_string):
+    """
+    Process the date received from frontend and format it for Excel output
+    Args:
+        date_string (str): Date in YYYY-MM-DD format from frontend
+    Returns:
+        dict: Dictionary containing formatted date components
+    """
+    from datetime import datetime
+    
+    try:
+        # Parse the date string (expected format: YYYY-MM-DD)
+        parsed_date = datetime.strptime(date_string, "%Y-%m-%d")
+        
+        # Format into DDMMYYYY
+        formatted_date = parsed_date.strftime("%d%m%Y")
+
+        formatted_string = parsed_date.strftime("%d %B, %Y")
+        
+        # Create dictionary with date components
+        date_components = {
+            'processing_date': date_string,
+            'processing_date_formatted': formatted_date,
+            'processing_date_string': formatted_string,
+            'D1': formatted_date[0],
+            'D2': formatted_date[1],
+            'M1': formatted_date[2],
+            'M2': formatted_date[3],
+            'Y1': formatted_date[4],
+            'Y2': formatted_date[5],
+            'Y3': formatted_date[6],
+            'Y4': formatted_date[7]
+        }
+        
+        return date_components
+    except ValueError as e:
+        print(f"⚠️ Error processing date: {e}")
+        return None
+    
+    # Add this function near the top of the file
+def extract_series_number(product_code):
+    """Extract series number from product code"""
+    if not product_code:
+        return ""
+    
+    # Split by spaces and get the last part
+    parts = product_code.strip().split()
+    if parts:
+        last_part = parts[-1]
+        # If it contains 'series' (case insensitive), return the whole last part
+        if 'series' in last_part.lower():
+            return last_part
+        # If the last part is just a number, add 'Series' prefix
+        if last_part.isdigit():
+            return f"Series {last_part}"
+    return ""
+
+def extract_issue_size_number(issue_size):
+    """
+    Extract both the first number (issue size) and fourth number (total amount) from issue size text
+    Returns tuple: (issue_size_num, formatted_total_amount)
+    Example input: "75 Debentures bearing face value of Rs. 1,00,000/- each, issued at Rs.95,500/-, 
+                   total amounting to Rs.71,62,500/-"
+    Example output: ("75", "71,62,500")
+    """
+    import re
+    
+    if not issue_size:
+        return ("", "")
+    
+    # Remove all commas first
+    cleaned_text = issue_size.replace(',', '')
+    
+    # Find all numbers (including decimals) in the text
+    numbers = re.findall(r'\d+\.?\d*', cleaned_text)
+    
+    # Get first number (issue size)
+    issue_size_num = numbers[0] if numbers else ""
+    
+    # Get fourth number if available and format it
+    formatted_amount = ""
+    if len(numbers) >= 4:
+        total_amount = numbers[3]
+        try:
+            amount = int(float(total_amount))
+            formatted_amount = format_indian_number(amount)
+        except (ValueError, TypeError):
+            pass
+    
+    return (issue_size_num, formatted_amount)
+
+
+def extract_tenor_days_number(tenor_text):
+    """Extract number from Tenor in Days text"""
+    import re
+    
+    if not tenor_text:
+        return ""
+    
+    # Find numbers in the text
+    numbers = re.findall(r'\d+', tenor_text)
+    
+    # Return first number found or empty string if none found
+    return numbers[0] if numbers else ""
+
+def extract_face_value_number(face_value):
+    """
+    Extract number from Face Value text and return both raw and formatted values
+    Returns tuple: (number_as_string, formatted_with_commas)
+    Example: "Rs. 1,00,000/- (Rupees One Lakh Only)" -> ("100000", "1,00,000")
+    """
+    import re
+    
+    if not face_value:
+        return ("", "")
+    
+    # Remove commas from numbers
+    cleaned_text = face_value.replace(',', '')
+    
+    # Find numbers including decimals
+    numbers = re.findall(r'\d+\.?\d*', cleaned_text)
+    
+    if numbers:
+        try:
+            # Convert to integer if possible
+            number_str = numbers[0]
+            number_int = int(float(number_str))
+            formatted = format_indian_number(number_int)
+            return (str(number_int), formatted)
+        except (ValueError, TypeError):
+            return (numbers[0], numbers[0])
+    
+    return ("", "")
+
+def calculate_amount_raised(data_dict):
+    """
+    Calculate total value by multiplying issue size and face value,
+    converting from lakhs to crores
+    """
+    try:
+        # Get values and convert to float
+        issue_size = float(data_dict.get('issue_size_number', 0))
+        face_value = float(data_dict.get('face_value_num', 0))
+        
+        # Calculate total in lakhs
+        total_in_lakhs = issue_size * face_value
+        
+        # Convert to crores (1 crore = 100 lakhs)
+        total_in_crores = total_in_lakhs / 10000000
+        
+        # Format with comma separators and 2 decimal places
+        formatted_value = f"Rs {total_in_crores:,.2f} crores"
+        
+        return formatted_value
+    except (ValueError, TypeError) as e:
+        print(f"⚠️ Error calculating total value: {e}")
+        return "Rs 0 crores"
+
+def extract_discount_value_number(discount_text):
+    """
+    Extract first complete number from discount text, handling commas.
+    Returns a tuple: (number_as_string, formatted_with_commas)
+    Example: "Rs. 4,500/- (Rupees Four Thousand Five Hundred Only)" -> ("4500", "4,500")
+    """
+    import re
+
+    if not discount_text:
+        return ("", "")
+
+    # First find any number pattern that may include commas
+    number_pattern = r'(?:Rs\.?\s*)?(\d+(?:,\d+)*(?:\.\d+)?)'
+    matches = re.search(number_pattern, discount_text)
+
+    if matches:
+        # Remove commas from the matched number
+        number_str = matches.group(1).replace(',', '')
+        try:
+            # Try to convert to int if possible, else float
+            if '.' in number_str:
+                number_val = float(number_str)
+            else:
+                number_val = int(number_str)
+            formatted = format_indian_number(int(float(number_str)))
+            return (number_str, formatted)
+        except (ValueError, TypeError):
+            return (number_str, number_str)
+
+    return ("", "")
+
+def extract_issue_price_number(issue_price_text):
+    """
+    Extract first complete number from Issue Price text, handling commas.
+    Returns a tuple: (number_as_string, formatted_with_commas)
+    Example: "Rs. 95,500/- (Rupees Ninety-Five Thousand Five Hundred Only) per Debenture"
+    Output: ("95500", "95,500")
+    """
+    import re
+
+    if not issue_price_text:
+        return ("", "")
+
+    # Find first number pattern that may include commas
+    number_pattern = r'(?:Rs\.?\s*)?(\d+(?:,\d+)*(?:\.\d+)?)'
+    match = re.search(number_pattern, issue_price_text)
+    if match:
+        number_str = match.group(1).replace(',', '')
+        try:
+            number_int = int(float(number_str))
+            formatted = format_indian_number(number_int)
+            return (number_str, formatted)
+        except (ValueError, TypeError):
+            return (number_str, number_str)
+    return ("", "")
+
+def format_indian_number(number):
+    """Helper function to format number with Indian style commas"""
+    str_num = str(number)
+    length = len(str_num)
+    
+    if length <= 3:
+        return str_num
+    
+    # Split the number into parts
+    last_three = str_num[-3:]
+    remaining = str_num[:-3]
+    
+    # Add commas every 2 digits in the remaining part
+    formatted = ''
+    for i, digit in enumerate(reversed(remaining)):
+        if i % 2 == 1 and i != len(remaining) - 1:
+            formatted = ',' + digit + formatted
+        else:
+            formatted = digit + formatted
+    
+    return formatted + ',' + last_three
 
 def save_uploaded_file(file, upload_folder):
     import os
