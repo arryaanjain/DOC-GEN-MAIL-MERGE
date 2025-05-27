@@ -49,11 +49,11 @@ def calculate_amount_raised(data_dict):
     """
     try:
         # Get values and convert to float
-        issue_size = float(data_dict.get('issue_size_number', 0))
+        issue_size_num = float(data_dict.get('issue_size_num', 0))
         face_value = float(data_dict.get('face_value_num', 0))
-        
+        print(f"Calculating amount raised: issue_size_num={issue_size_num}, face_value={face_value}")
         # Calculate total in lakhs
-        total_in_lakhs = issue_size * face_value
+        total_in_lakhs = issue_size_num * face_value
         
         # Convert to crores (1 crore = 100 lakhs)
         total_in_crores = total_in_lakhs / 10000000

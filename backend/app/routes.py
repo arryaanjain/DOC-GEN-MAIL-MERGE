@@ -2,7 +2,7 @@ from flask import Blueprint, request, send_file, after_this_request
 from werkzeug.utils import secure_filename
 import os
 import shutil
-from app.core.document_processor import DocumentProcessor
+from app.core.document_processor_new import DocumentProcessor
 
 ob = DocumentProcessor(debug=True)
 
