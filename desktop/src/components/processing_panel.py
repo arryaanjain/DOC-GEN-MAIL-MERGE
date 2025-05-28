@@ -83,9 +83,8 @@ class ProcessingPanel(ctk.CTkFrame):
             messagebox.showerror("Error", "Please select both input and output locations")
             return
             
-        # Generate output Excel filename based on input docx
-        base_name = os.path.splitext(os.path.basename(self.selected_docx))[0]
-        output_excel = os.path.join(self.output_path, f"{base_name}.xlsx")
+        # Always use 'converted.xlsx' as the output filename
+        output_excel = os.path.join(self.output_path, "converted.xlsx")
         
         try:
             self.status_panel.update_status("Processing document...", "info")

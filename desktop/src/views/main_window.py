@@ -21,7 +21,7 @@ class MainWindow(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         
         # Initialize document processor
-        from app.core.document_processor_new import DocumentProcessor
+        from src.backend.app.core.document_processor_new import DocumentProcessor
         self.doc_processor = DocumentProcessor(debug=AppConfig.DEBUG_MODE)
         
         # Create main processing panel
