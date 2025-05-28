@@ -61,7 +61,19 @@ class ProcessingPanel(ctk.CTkFrame):
         self.process_button.grid(row=7, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
         self.status_panel = StatusPanel(self)
         self.status_panel.grid(row=8, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-    
+        # Append-to file selection section
+        self.append_label = ctk.CTkLabel(self, text="Append To Existing Excel (optional):")
+        self.append_label.grid(row=9, column=0, padx=10, pady=(10,0), sticky="w")
+        self.append_button = ctk.CTkButton(
+            self,
+            text="Browse Excel",
+            command=self.select_append_file
+        )
+        self.append_button.grid(row=10, column=0, columnspan=2, padx=10, pady=(5,10), sticky="ew")
+        self.append_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
+        self.append_path_label.grid(row=11, column=0, columnspan=2, padx=10, pady=(0,10), sticky="w")
+        self.append_file_path = None
+
     def select_docx(self):
         file_path = ctk.filedialog.askopenfilename(
             filetypes=[("Word Documents", "*.docx")]
@@ -101,7 +113,7 @@ class ProcessingPanel(ctk.CTkFrame):
             self.status_panel.set_progress(0.5)  # Show progress
 
             # Pass processing_date as third argument
-            self.process_callback(self.selected_docx, output_excel, processing_date)
+            self.process_callback(self.selected_docx, output_excel, processing_date, self.append_file_path)
             self.status_panel.set_progress(1.0)  # Complete progress
             self.status_panel.update_status("Document processed successfully!", "success")
 
@@ -118,3 +130,20 @@ class ProcessingPanel(ctk.CTkFrame):
             self.process_button.configure(state="normal")
         else:
             self.process_button.configure(state="disabled")
+
+    def select_append_file(self):
+            file_path = ctk.filedialog.askopenfilename(
+                filetypes=[("Excel Files", "*.xlsx")]
+            )
+            if file_path:
+                self.append_file_path = file_path
+                self.append_path_label.configure(
+                    text=os.path.basename(file_path),
+                    text_color="green"
+                )
+            else:
+                self.append_file_path = None
+                self.append_path_label.configure(
+                    text="No file selected",
+                    text_color="gray"
+                )
