@@ -15,8 +15,10 @@ class DocumentProcessor:
             self.logger = DebugLogger()
 
     # Enhanced function for better table structure handling
-    def convert_docx_to_xlsx(self, docx_file_path, xlsx_file_path, processing_date=None):
-
+    def convert_docx_to_xlsx(self, docx_file_path, xlsx_file_path, processing_date=None, append_to_file=None):
+        #need to reset values at every run because the desktop UI is using the same object as long as the app is open
+        self.data_dict = {}
+        self.debug_info = []
         doc = Document(docx_file_path)
         # Process tables
         self._process_tables(doc, processing_date)
@@ -32,6 +34,17 @@ class DocumentProcessor:
         # Process all special fields including dates
         self.data_dict = FieldProcessor.process_special_fields(self.data_dict, self.debug)
         ExcelWriter.write_to_excel(self.data_dict, xlsx_file_path, self.debug_info, self.debug)
+        
+        # Prepare data for appending: only values, not headers
+        data_to_append = list(self.data_dict.values()) if self.data_dict else []
+
+        # Prepare debug info for appending: only values, not headers
+        debug_info_to_append = [list(d.values()) for d in self.debug_info] if self.debug_info else []
+
+        if append_to_file:
+            ExcelWriter.append_to_excel(
+                data_to_append, append_to_file, debug_info_to_append, self.debug
+            )
         return self.data_dict
     
     def _process_tables(self, doc, processing_date):
