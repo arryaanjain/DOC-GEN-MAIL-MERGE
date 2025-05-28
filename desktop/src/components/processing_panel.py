@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
+from tkcalendar import DateEntry
 from src.components.status_panel import StatusPanel
 import os
 
@@ -42,6 +43,14 @@ class ProcessingPanel(ctk.CTkFrame):
         self.output_path_label = ctk.CTkLabel(self, text="No location selected", text_color="gray")
         self.output_path_label.grid(row=5, column=0, columnspan=2, padx=10, pady=(0,10), sticky="w")
         
+        # Processing date section
+        self.date_label = ctk.CTkLabel(self, text="Processing Date (YYYY-MM-DD):")
+        self.date_label.grid(row=6, column=0, padx=10, pady=(0,0), sticky="w")
+        self.date_entry = ctk.CTkEntry(self)
+        self.date_entry.grid(row=6, column=1, padx=10, pady=(0,0), sticky="ew")
+        self.date_entry = DateEntry(self, date_pattern='yyyy-mm-dd')
+        self.date_entry.grid(row=6, column=1, padx=10, pady=(0,0), sticky="ew")
+
         # Processing button
         self.process_button = ctk.CTkButton(
             self,
@@ -49,9 +58,9 @@ class ProcessingPanel(ctk.CTkFrame):
             command=self.process_document,
             state="disabled"
         )
-        self.process_button.grid(row=6, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
+        self.process_button.grid(row=7, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
         self.status_panel = StatusPanel(self)
-        self.status_panel.grid(row=7, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.status_panel.grid(row=8, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
     
     def select_docx(self):
         file_path = ctk.filedialog.askopenfilename(
@@ -82,25 +91,27 @@ class ProcessingPanel(ctk.CTkFrame):
             self.status_panel.update_status("Missing input or output location", "error")
             messagebox.showerror("Error", "Please select both input and output locations")
             return
-            
+
         # Always use 'converted.xlsx' as the output filename
         output_excel = os.path.join(self.output_path, "converted.xlsx")
-        
+        processing_date = self.date_entry.get().strip()  # Get date from entry
+
         try:
             self.status_panel.update_status("Processing document...", "info")
             self.status_panel.set_progress(0.5)  # Show progress
-            
-            self.process_callback(self.selected_docx, output_excel)
+
+            # Pass processing_date as third argument
+            self.process_callback(self.selected_docx, output_excel, processing_date)
             self.status_panel.set_progress(1.0)  # Complete progress
             self.status_panel.update_status("Document processed successfully!", "success")
-            
+
             messagebox.showinfo("Success", "Document processed successfully!")
         except Exception as e:
             self.status_panel.set_progress(0)  # Reset progress
             self.status_panel.update_status(f"Error: {str(e)}", "error")
-            
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
 
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            
     def _check_process_ready(self):
         """Enable process button if both input and output are selected"""
         if self.selected_docx and self.output_path:

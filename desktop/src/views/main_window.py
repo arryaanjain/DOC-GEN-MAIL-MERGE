@@ -35,9 +35,10 @@ class MainWindow(ctk.CTk):
             sticky="nsew"
         )
 
-    def process_document(self, input_path: str, output_path: str):
+    def process_document(self, input_path: str, output_path: str, processing_date: str):
         """Callback for document processing"""
         return self.doc_processor.convert_docx_to_xlsx(
             docx_file_path=input_path,
-            xlsx_file_path=output_path
+            xlsx_file_path=output_path,
+            processing_date=processing_date
         )
