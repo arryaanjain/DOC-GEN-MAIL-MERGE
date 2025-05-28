@@ -2,3 +2,18 @@ __pycache__/
 venv/
 logs/
 outputs/
+*.pyc
+instance/
+uploads/
+.env
+*.db
+*.sqlite3
+.DS_Store
+*.log
+*.pyo
+*.pyd
+.idea/
+.vscode/
+
+#tmp dir
+tmp/
