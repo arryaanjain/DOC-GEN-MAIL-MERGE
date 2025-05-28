@@ -2,7 +2,9 @@ import customtkinter as ctk
 from tkinter import messagebox
 from tkcalendar import DateEntry
 from src.components.status_panel import StatusPanel
+from src.backend.app.core.root_dir_setup import get_output_directory
 import os
+import datetime
 
 class ProcessingPanel(ctk.CTkFrame):
     def __init__(self, master, process_callback):
@@ -39,18 +41,6 @@ class ProcessingPanel(ctk.CTkFrame):
         self.docx_button.grid(row=2, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
         self.docx_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
         self.docx_path_label.grid(row=1, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
-
-        # Output selection section
-        self.output_label = ctk.CTkLabel(self, text="Select Output Location:")
-        self.output_label.grid(row=4, column=0, padx=10, pady=(10,0), sticky="w")
-        self.output_button = ctk.CTkButton(
-            self, 
-            text="Choose Output Location",
-            command=self.select_output
-        )
-        self.output_button.grid(row=5, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
-        self.output_path_label = ctk.CTkLabel(self, text="No location selected", text_color="gray")
-        self.output_path_label.grid(row=4, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
 
         # Processing date section
         self.date_label = ctk.CTkLabel(self, text="Processing Date (YYYY-MM-DD):")
@@ -104,25 +94,20 @@ class ProcessingPanel(ctk.CTkFrame):
             self.status_panel.update_status(f"Selected document: {os.path.basename(file_path)}", "info")
             self._check_process_ready()
 
-    def select_output(self):
-        output_dir = ctk.filedialog.askdirectory()
-        if output_dir:
-            self.output_path = output_dir
-            self.output_path_label.configure(
-                text=os.path.basename(output_dir),
-                text_color="green"
-            )
-            self.status_panel.update_status(f"Selected output directory: {os.path.basename(output_dir)}", "info")
-            self._check_process_ready()
-
     def process_document(self):
-        if not self.selected_docx or not self.output_path:
+        if not self.selected_docx or not self.root_dir:
             self.status_panel.update_status("Missing input or output location", "error")
             messagebox.showerror("Error", "Please select both input and output locations")
             return
 
-        # Always use 'converted.xlsx' as the output filename
-        output_excel = os.path.join(self.output_path, "converted.xlsx")
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        output_dir = get_output_directory(self.root_dir, current_date)
+        self.output_path = output_dir  # Update output path to the new directory
+        
+        # Generate timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_excel = os.path.join(self.output_path, f"converted_{timestamp}.xlsx")
+        
         processing_date = self.date_entry.get().strip()  # Get date from entry
 
         try:
@@ -143,7 +128,7 @@ class ProcessingPanel(ctk.CTkFrame):
             
     def _check_process_ready(self):
         """Enable process button if both input and output are selected"""
-        if self.selected_docx and self.output_path:
+        if self.selected_docx and self.root_dir:
             self.process_button.configure(state="normal")
         else:
             self.process_button.configure(state="disabled")
