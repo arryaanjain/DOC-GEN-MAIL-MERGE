@@ -21,23 +21,34 @@ class MainWindow(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         
         # Initialize document processor
-        from app.core.document_processor_new import DocumentProcessor
+        from src.backend.app.core.document_processor_new import DocumentProcessor
         self.doc_processor = DocumentProcessor(debug=AppConfig.DEBUG_MODE)
         
-        # Create main processing panel
-        self.processing_panel = ProcessingPanel(
-            self,
-            process_callback=self.process_document
-        )
-        self.processing_panel.grid(
+        # Create a scrollable frame for the processing panel
+        self.scrollable_frame = ctk.CTkScrollableFrame(self)
+        self.scrollable_frame.grid(
             row=0, column=0,
             padx=20, pady=20,
             sticky="nsew"
         )
 
-    def process_document(self, input_path: str, output_path: str):
+        # Enable mouse wheel scrolling
+        self.scrollable_frame.bind_all("<MouseWheel>", lambda event: self.scrollable_frame._parent_canvas.yview_scroll(int(-1*(event.delta/120)), "units"))
+        self.scrollable_frame.bind_all("<Button-4>", lambda event: self.scrollable_frame._parent_canvas.yview_scroll(-1, "units"))  # For Linux
+        self.scrollable_frame.bind_all("<Button-5>", lambda event: self.scrollable_frame._parent_canvas.yview_scroll(1, "units"))   # For Linux
+
+        # Place ProcessingPanel inside the scrollable frame
+        self.processing_panel = ProcessingPanel(
+            self.scrollable_frame,
+            process_callback=self.process_document
+        )
+        self.processing_panel.pack(fill="both", expand=True)
+
+    def process_document(self, input_path: str, output_path: str, processing_date: str, append_file_path=None):
         """Callback for document processing"""
         return self.doc_processor.convert_docx_to_xlsx(
             docx_file_path=input_path,
-            xlsx_file_path=output_path
+            xlsx_file_path=output_path,
+            processing_date=processing_date,
+            append_to_file=append_file_path
         )

@@ -1,2 +1,8 @@
 customtkinter
 pillow 
+tkcalendar 
+
+python-docx
+openpyxl
+pandas
+XlsxWriter
