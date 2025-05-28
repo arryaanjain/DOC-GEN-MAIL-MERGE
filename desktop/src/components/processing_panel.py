@@ -10,46 +10,66 @@ class ProcessingPanel(ctk.CTkFrame):
         self.process_callback = process_callback
         self.selected_docx = None
         self.output_path = None
-        
+        self.root_dir = None
+
         # Configure grid
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-        
+        self.grid_columnconfigure(0, weight=0)  # Label
+        self.grid_columnconfigure(1, weight=1)  # Entry expands
+        self.grid_columnconfigure(2, weight=0)  # Button
+
+        # Root directory selection section
+        self.root_label = ctk.CTkLabel(self, text="Select Root Directory:")
+        self.root_label.grid(row=0, column=0, padx=(10, 5), pady=(10, 0), sticky="w")
+        self.root_entry = ctk.CTkEntry(self)
+        self.root_entry.grid(row=0, column=1, padx=(0, 5), pady=(10, 0), sticky="ew")
+        self.root_button = ctk.CTkButton(
+            self,
+            text="Browse",
+            command=self.select_root_dir
+        )
+        self.root_button.grid(row=0, column=2, padx=(0, 10), pady=(10, 0), sticky="ew")
         # File selection section
         self.docx_label = ctk.CTkLabel(self, text="Select Input DOCX:")
-        self.docx_label.grid(row=0, column=0, padx=10, pady=(10,0), sticky="w")
-        
+        self.docx_label.grid(row=1, column=0, padx=10, pady=(10,0), sticky="w")
         self.docx_button = ctk.CTkButton(
             self, 
             text="Browse DOCX",
             command=self.select_docx
         )
-        self.docx_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(5,10), sticky="ew")
-        
+        self.docx_button.grid(row=2, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
         self.docx_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
-        self.docx_path_label.grid(row=2, column=0, columnspan=2, padx=10, pady=(0,10), sticky="w")
-        
+        self.docx_path_label.grid(row=1, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
+
         # Output selection section
         self.output_label = ctk.CTkLabel(self, text="Select Output Location:")
-        self.output_label.grid(row=3, column=0, padx=10, pady=(10,0), sticky="w")
-        
+        self.output_label.grid(row=4, column=0, padx=10, pady=(10,0), sticky="w")
         self.output_button = ctk.CTkButton(
             self, 
             text="Choose Output Location",
             command=self.select_output
         )
-        self.output_button.grid(row=4, column=0, columnspan=2, padx=10, pady=(5,10), sticky="ew")
-        
+        self.output_button.grid(row=5, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
         self.output_path_label = ctk.CTkLabel(self, text="No location selected", text_color="gray")
-        self.output_path_label.grid(row=5, column=0, columnspan=2, padx=10, pady=(0,10), sticky="w")
-        
+        self.output_path_label.grid(row=4, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
+
         # Processing date section
         self.date_label = ctk.CTkLabel(self, text="Processing Date (YYYY-MM-DD):")
-        self.date_label.grid(row=6, column=0, padx=10, pady=(0,0), sticky="w")
-        self.date_entry = ctk.CTkEntry(self)
-        self.date_entry.grid(row=6, column=1, padx=10, pady=(0,0), sticky="ew")
+        self.date_label.grid(row=7, column=0, padx=10, pady=(0,0), sticky="w")
         self.date_entry = DateEntry(self, date_pattern='yyyy-mm-dd')
-        self.date_entry.grid(row=6, column=1, padx=10, pady=(0,0), sticky="ew")
+        self.date_entry.grid(row=7, column=1, padx=10, pady=(0,0), sticky="ew")
+
+        # Append-to file selection section (moved above status panel)
+        self.append_label = ctk.CTkLabel(self, text="Append To Existing Excel (optional):")
+        self.append_label.grid(row=8, column=0, padx=10, pady=(10,0), sticky="w")
+        self.append_button = ctk.CTkButton(
+            self,
+            text="Browse Excel",
+            command=self.select_append_file
+        )
+        self.append_button.grid(row=9, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
+        self.append_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
+        self.append_path_label.grid(row=8, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
+        self.append_file_path = None
 
         # Processing button
         self.process_button = ctk.CTkButton(
@@ -58,21 +78,18 @@ class ProcessingPanel(ctk.CTkFrame):
             command=self.process_document,
             state="disabled"
         )
-        self.process_button.grid(row=7, column=0, columnspan=2, padx=10, pady=20, sticky="ew")
+        self.process_button.grid(row=11, column=0, columnspan=3, padx=10, pady=20, sticky="ew")
+
+        # Status panel (now at the bottom)
         self.status_panel = StatusPanel(self)
-        self.status_panel.grid(row=8, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-        # Append-to file selection section
-        self.append_label = ctk.CTkLabel(self, text="Append To Existing Excel (optional):")
-        self.append_label.grid(row=9, column=0, padx=10, pady=(10,0), sticky="w")
-        self.append_button = ctk.CTkButton(
-            self,
-            text="Browse Excel",
-            command=self.select_append_file
-        )
-        self.append_button.grid(row=10, column=0, columnspan=2, padx=10, pady=(5,10), sticky="ew")
-        self.append_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
-        self.append_path_label.grid(row=11, column=0, columnspan=2, padx=10, pady=(0,10), sticky="w")
-        self.append_file_path = None
+        self.status_panel.grid(row=12, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+    def select_root_dir(self):
+        dir_path = ctk.filedialog.askdirectory()
+        if dir_path:
+            self.root_dir = dir_path
+            self.root_entry.delete(0, "end")
+            self.root_entry.insert(0, dir_path)
 
     def select_docx(self):
         file_path = ctk.filedialog.askopenfilename(
