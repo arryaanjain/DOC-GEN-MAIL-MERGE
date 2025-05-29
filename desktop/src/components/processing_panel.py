@@ -38,7 +38,7 @@ class ProcessingPanel(ctk.CTkFrame):
             text="Browse DOCX",
             command=self.select_docx
         )
-        self.docx_button.grid(row=2, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
+        self.docx_button.grid(row=1, column=2, padx=10, pady=(10,0), sticky="ew")
         self.docx_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
         self.docx_path_label.grid(row=1, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
 
@@ -56,7 +56,7 @@ class ProcessingPanel(ctk.CTkFrame):
             text="Browse Excel",
             command=self.select_append_file
         )
-        self.append_button.grid(row=9, column=0, columnspan=3, padx=10, pady=(5,10), sticky="ew")
+        self.append_button.grid(row=8, column=2, padx=10, pady=(10,0), sticky="ew")
         self.append_path_label = ctk.CTkLabel(self, text="No file selected", text_color="gray")
         self.append_path_label.grid(row=8, column=1, columnspan=2, padx=10, pady=(10,0), sticky="w")
         self.append_file_path = None
@@ -68,7 +68,7 @@ class ProcessingPanel(ctk.CTkFrame):
             command=self.process_document,
             state="disabled"
         )
-        self.process_button.grid(row=11, column=0, columnspan=3, padx=10, pady=20, sticky="ew")
+        self.process_button.grid(row=11, column=1, padx=10, pady=20, sticky="ew")
 
         # Status panel (now at the bottom)
         self.status_panel = StatusPanel(self)
