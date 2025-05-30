@@ -43,6 +43,7 @@ class MainWindow(ctk.CTk):
             process_callback=self.process_document
         )
         self.processing_panel.pack(fill="both", expand=True)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def process_document(self, input_path: str, output_path: str, processing_date: str, append_file_path=None):
         """Callback for document processing"""
@@ -52,3 +53,9 @@ class MainWindow(ctk.CTk):
             processing_date=processing_date,
             append_to_file=append_file_path
         )
+    
+    def on_closing(self):
+        """Clean up resources and close the window"""
+        AppTheme.cleanup()  # Clean up theme management
+        self.quit()
+        self.destroy()

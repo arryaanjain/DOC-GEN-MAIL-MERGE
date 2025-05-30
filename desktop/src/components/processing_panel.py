@@ -14,6 +14,9 @@ class ProcessingPanel(ctk.CTkFrame):
             master,
             **AppTheme.get_frame_style()
         )
+
+        AppTheme.add_theme_callback(self.update_theme_colors)
+        
         self.process_callback = process_callback
         self.selected_docx = None
         self.output_path = None
@@ -34,16 +37,18 @@ class ProcessingPanel(ctk.CTkFrame):
         self.root_label.grid(row=0, column=0, padx=(12, 8), pady=10, sticky="w")
         self.root_entry = ctk.CTkEntry(self.root_frame, **AppTheme.get_input_style())
         self.root_entry.grid(row=0, column=1, padx=(0, 8), pady=10, sticky="ew")
+        # Root Directory Button
         self.root_button = ctk.CTkButton(
-            self.root_frame, text="Browse",
+            self.root_frame, 
+            text="Browse",
             command=self.select_root_dir,
-            fg_color=AppTheme.get_colors()["primary"], 
-            hover_color=AppTheme.get_colors()["secondary"], 
-            text_color="white",
-            **AppTheme.get_button_style()
+            **AppTheme.get_button_style(override_colors=True)
+        )
+        self.root_button.configure(
+            fg_color=AppTheme.get_colors()["primary"],
+            hover_color=AppTheme.get_colors()["secondary"]
         )
         self.root_button.grid(row=0, column=2, padx=(0, 12), pady=10, sticky="ew")
-
         # --- Separator ---
         self.sep1 = ctk.CTkFrame(self, height=2, fg_color=self._get_separator_color())
         self.sep1.grid(row=1, column=0, sticky="ew", padx=8, pady=(0, 4))
@@ -64,12 +69,14 @@ class ProcessingPanel(ctk.CTkFrame):
         )
         self.docx_path_label.grid(row=0, column=1, padx=8, pady=10, sticky="w")
         self.docx_button = ctk.CTkButton(
-            self.docx_frame, text="Browse DOCX",
+            self.docx_frame, 
+            text="Browse DOCX",
             command=self.select_docx,
-            fg_color=AppTheme.get_colors()["primary"], 
-            hover_color=AppTheme.get_colors()["secondary"], 
-            text_color="white",
-            **AppTheme.get_button_style()
+            **AppTheme.get_button_style(override_colors=True)
+        )
+        self.docx_button.configure(
+            fg_color=AppTheme.get_colors()["primary"],
+            hover_color=AppTheme.get_colors()["secondary"]
         )
         self.docx_button.grid(row=0, column=2, padx=12, pady=10, sticky="ew")
 
@@ -110,12 +117,14 @@ class ProcessingPanel(ctk.CTkFrame):
         )
         self.append_path_label.grid(row=0, column=1, padx=8, pady=10, sticky="w")
         self.append_button = ctk.CTkButton(
-            self.append_frame, text="Browse Excel",
+            self.append_frame, 
+            text="Browse Excel",
             command=self.select_append_file,
-            fg_color=AppTheme.get_colors()["success"], 
-            hover_color="#388e3c", 
-            text_color="white",
-            **AppTheme.get_button_style()
+            **AppTheme.get_button_style(override_colors=True)
+        )
+        self.append_button.configure(
+            fg_color=AppTheme.get_colors()["success"],
+            hover_color="#388e3c"
         )
         self.append_button.grid(row=0, column=2, padx=12, pady=10, sticky="ew")
         self.append_file_path = None
@@ -127,15 +136,22 @@ class ProcessingPanel(ctk.CTkFrame):
         # --- Process Button Section ---
         self.button_frame = ctk.CTkFrame(self, **AppTheme.get_frame_style())
         self.button_frame.grid(row=8, column=0, sticky="ew", padx=12, pady=4)
+       
+       # Process Button
         self.process_button = ctk.CTkButton(
-            self.button_frame, text="Process Document",
+            self.button_frame, 
+            text="Process Document",
             command=self.process_document,
             state="disabled",
-            fg_color=AppTheme.get_colors()["warning"], 
-            hover_color="#f57c00", 
-            text_color="white",
-            **AppTheme.get_button_style(font=AppTheme.FONTS["heading"]),
-            width=220  # Fixed width for centering
+            width=220,  # Fixed width for centering
+            **AppTheme.get_button_style(
+                font=AppTheme.FONTS["heading"],
+                override_colors=True
+            )
+        )
+        self.process_button.configure(
+            fg_color=AppTheme.get_colors()["warning"],
+            hover_color="#f57c00"
         )
         self.process_button.pack(pady=10, anchor="center")  # Center the button
 
@@ -148,8 +164,7 @@ class ProcessingPanel(ctk.CTkFrame):
         self.status_panel.grid(row=10, column=0, padx=16, pady=16, sticky="nsew")
 
     def _get_separator_color(self):
-        """Return separator color based on theme."""
-        return "#444" if ctk.get_appearance_mode() == "Dark" else "#e0e0e0"
+        return AppTheme.get_separator_color()
 
     def select_root_dir(self):
         dir_path = ctk.filedialog.askdirectory()
@@ -232,3 +247,58 @@ class ProcessingPanel(ctk.CTkFrame):
             self.process_button.configure(state="normal")
         else:
             self.process_button.configure(state="disabled")
+    
+    def update_theme_colors(self):
+        """Update colors when theme changes"""
+        colors = AppTheme.get_colors()
+        
+        # Update buttons
+        self.root_button.configure(
+            fg_color=colors["primary"],
+            hover_color=colors["secondary"]
+        )
+        self.docx_button.configure(
+            fg_color=colors["primary"],
+            hover_color=colors["secondary"]
+        )
+        self.append_button.configure(
+            fg_color=colors["success"],
+            hover_color="#388e3c"
+        )
+        self.process_button.configure(
+            fg_color=colors["warning"],
+            hover_color="#f57c00"
+        )
+        
+        # Update separators
+        separator_color = self._get_separator_color()
+        self.sep1.configure(fg_color=separator_color)
+        self.sep2.configure(fg_color=separator_color)
+        self.sep3.configure(fg_color=separator_color)
+        self.sep4.configure(fg_color=separator_color)
+        self.sep5.configure(fg_color=separator_color)
+
+        # Update labels
+        self._update_label_colors()
+
+    def _update_label_colors(self):
+        """Update all label colors based on current theme"""
+        colors = AppTheme.get_colors()
+        
+        # Update heading labels
+        self.root_label.configure(text_color=colors["text"])
+        self.docx_label.configure(text_color=colors["text"])
+        self.date_label.configure(text_color=colors["text"])
+        self.append_label.configure(text_color=colors["text"])
+        
+        # Update path labels with appropriate colors based on selection state
+        self.docx_path_label.configure(
+            text_color=colors["success"] if self.selected_docx else colors["text"]
+        )
+        self.append_path_label.configure(
+            text_color=colors["success"] if self.append_file_path else colors["text"]
+        )
+
+    def __del__(self):
+        """Clean up theme callback when widget is destroyed"""
+        AppTheme.remove_theme_callback(self.update_theme_colors)
