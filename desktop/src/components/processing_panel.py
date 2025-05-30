@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from tkcalendar import DateEntry
+from tkcalendar import Calendar
 from src.components.status_panel import StatusPanel
 from src.backend.app.core.root_dir_setup import get_output_directory
 import os
@@ -84,18 +84,44 @@ class ProcessingPanel(ctk.CTkFrame):
         self.sep2 = ctk.CTkFrame(self, height=2, fg_color=self._get_separator_color())
         self.sep2.grid(row=3, column=0, sticky="ew", padx=8, pady=(0, 4))
 
-        # --- Processing Date Section ---
+                # --- Processing Date Section ---
         self.date_frame = ctk.CTkFrame(self, **AppTheme.get_frame_style())
         self.date_frame.grid(row=4, column=0, sticky="ew", padx=12, pady=4)
-        self.date_frame.grid_columnconfigure(1, weight=1)
-
+        self.date_frame.grid_columnconfigure(1, weight=1)  # Make middle space expand
+        
         self.date_label = ctk.CTkLabel(
-            self.date_frame, text="Processing Date (YYYY-MM-DD):",
+            self.date_frame, 
+            text="Processing Date:",
             **AppTheme.get_label_style(font=AppTheme.FONTS["heading"])
         )
         self.date_label.grid(row=0, column=0, padx=12, pady=10, sticky="w")
-        self.date_entry = DateEntry(self.date_frame, date_pattern='yyyy-mm-dd')
-        self.date_entry.grid(row=0, column=1, padx=8, pady=10, sticky="ew")
+
+        # Date entry using CustomTkinter entry with validation
+        self.date_entry = ctk.CTkEntry(
+            self.date_frame,
+            placeholder_text="YYYY-MM-DD",
+            width=120,  # Match button width
+            **AppTheme.get_input_style()
+        )
+        self.date_entry.grid(row=0, column=2, padx=12, pady=10, sticky="e")
+        self.date_entry.insert(0, datetime.datetime.now().strftime("%Y-%m-%d"))  # Set current date
+
+        # Add calendar button
+        self.calendar_button = ctk.CTkButton(
+            self.date_frame,
+            text="📅",  # Calendar emoji
+            width=40,  # Square button
+            command=self.show_calendar,
+            **AppTheme.get_button_style(override_colors=True)
+        )
+        self.calendar_button.configure(
+            fg_color=AppTheme.get_colors()["primary"],
+            hover_color=AppTheme.get_colors()["secondary"]
+        )
+        self.calendar_button.grid(row=0, column=3, padx=(0, 12), pady=10)
+
+        # Add validation
+        self._validate_date_entry()
 
         # --- Separator ---
         self.sep3 = ctk.CTkFrame(self, height=2, fg_color=self._get_separator_color())
@@ -298,6 +324,80 @@ class ProcessingPanel(ctk.CTkFrame):
         self.append_path_label.configure(
             text_color=colors["success"] if self.append_file_path else colors["text"]
         )
+
+    # Then add this method to your ProcessingPanel class
+    def show_calendar(self):
+        """Show a calendar popup for date selection"""
+        def set_date():
+            if cal.selection_get():
+                selected_date = cal.selection_get().strftime("%Y-%m-%d")
+                self.date_entry.delete(0, "end")
+                self.date_entry.insert(0, selected_date)
+            top.destroy()
+
+        # Create popup window
+        top = ctk.CTkToplevel(self)
+        top.title("Select Date")
+        top.geometry("300x350")
+        top.transient(self)  # Make window modal
+        top.grab_set()  # Make window modal
+
+        # Create calendar widget
+        cal = Calendar(
+            top,
+            selectmode='day',
+            date_pattern='yyyy-mm-dd',
+            background=AppTheme.get_colors()["primary"],
+            foreground="white",
+            selectbackground=AppTheme.get_colors()["secondary"],
+            selectforeground="white",
+            normalbackground=AppTheme.get_colors()["surface"],
+            normalforeground=AppTheme.get_colors()["text"],
+            weekendbackground=AppTheme.get_colors()["surface"],
+            weekendforeground=AppTheme.get_colors()["text"],
+            headersbackground=AppTheme.get_colors()["primary"],
+            headersforeground="white"
+        )
+        cal.pack(expand=True, fill='both', padx=10, pady=10)
+
+        # If there's a current date in the entry, set calendar to that date
+        try:
+            current_date = datetime.datetime.strptime(
+                self.date_entry.get(), "%Y-%m-%d"
+            ).date()
+            cal.selection_set(current_date)
+        except ValueError:
+            pass  # Use today's date if current entry is invalid
+
+        # Add select button
+        select_btn = ctk.CTkButton(
+            top,
+            text="Select",
+            command=set_date,
+            **AppTheme.get_button_style()
+        )
+        select_btn.pack(pady=10)
+
+    def _validate_date_entry(self):
+        """Add validation to date entry"""
+        def validate_date(*args):
+            date_str = self.date_entry.get()
+            try:
+                if date_str:
+                    datetime.datetime.strptime(date_str, "%Y-%m-%d")
+                    self.date_entry.configure(
+                        text_color=AppTheme.get_colors()["text"]
+                    )
+                    return True
+            except ValueError:
+                self.date_entry.configure(
+                    text_color=AppTheme.get_colors()["error"]
+                )
+                return False
+
+        # Bind validation to entry changes
+        self.date_entry.bind('<KeyRelease>', validate_date)
+        self.date_entry.bind('<FocusOut>', validate_date)
 
     def __del__(self):
         """Clean up theme callback when widget is destroyed"""
